@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Block Game with Jump</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    // Сцена, камера, рендерер
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Підлога з квадратами (сітка плиток)
+    const floorSize = 20;
+    const tileSize = 1;
+    const gridHelper = new THREE.GridHelper(floorSize, floorSize, 0x444444, 0x888888);
+    scene.add(gridHelper);
+
+    // Плоска підлога - щоб тіні, але сітка головна візуалізація
+    const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize);
+    const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x888888, side: THREE.DoubleSide, transparent:true, opacity: 0.2 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    // Куб - гравець
+    const cubeGeometry = new THREE.BoxGeometry(1,1,1);
+    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    cube.position.y = 0.5;
+    scene.add(cube);
+
+    // Освітлення
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5,10,7);
+    scene.add(directionalLight);
+
+    // Камера
+    camera.position.set(0, 5, 7);
+    camera.lookAt(cube.position);
+
+    // Керування
+    const keys = {};
+    window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+    // Фізика (гравітація та стрибок)
+    let velocityY = 0;
+    const gravity = -0.03;
+    const jumpForce = 0.6;
+    let grounded = true;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Рух по XZ (стрілки)
+      const speed = 0.07;
+      let moveX = 0, moveZ = 0;
+      if(keys["arrowleft"]) moveX -= speed;
+      if(keys["arrowright"]) moveX += speed;
+      if(keys["arrowup"]) moveZ -= speed;
+      if(keys["arrowdown"]) moveZ += speed;
+
+      cube.position.x += moveX;
+      cube.position.z += moveZ;
+
+      // Гравітація
+      velocityY += gravity;
+      cube.position.y += velocityY;
+
+      // Земля (підлога) на y=0
+      if(cube.position.y < 0.5){
+        cube.position.y = 0.5;
+        velocityY = 0;
+        grounded = true;
+      }
+
+      // Стрибок
+      if(grounded && keys[" "]){  // пробіл
+        velocityY = jumpForce;
+        grounded = false;
+      }
+
+      // Камера слідкує за кубом
+      camera.position.x = cube.position.x;
+      camera.position.z = cube.position.z + 7;
+      camera.position.y = cube.position.y + 5;
+      camera.lookAt(cube.position);
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Підлаштувати розмір під вікно
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
